@@ -1,0 +1,84 @@
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  batch:
+
+exporters:
+  otlp/aspire-dashboard:
+    endpoint: aspire-dashboard:18889
+    tls:
+      insecure: true
+      # cert_file: /etc/otel/certs/cert.pem
+      # key_file: /etc/otel/certs/cert-key.pem
+
+  # AWS CloudWatch EMF Exporter for OpenTelemetry Collector (beta)
+  awsemf:
+    log_group_name: "otel-col-loggroup"
+    log_stream_name: "otel-col-stream"
+    log_retention: 90 # days
+    namespace: "otel-col-ns"
+    region: "ca-central-1"
+    max_retries: 1
+    resource_to_telemetry_conversion:
+      enabled: true
+
+  # AWS X-Ray Tracing Exporter for OpenTelemetry Collector (beta)
+  awsxray:
+    region: "ca-central-1"
+    aws_log_groups: ["otel-col-loggroup"]
+
+  prometheus:
+    endpoint: 0.0.0.0:8889
+    namespace: ocns
+
+  otlp/jaeger:
+    endpoint: jaeger:4317
+    tls:
+      insecure: true
+
+  # # AWS Logs
+  # awscloudwatchlogs:
+  #   log_group_name: "otel-col-loggroup"
+  #   log_stream_name: "otel-col-stream"
+  #   region: "ca-central-1"
+  #   log_retention: 90
+  #   raw_log: true
+
+  # otlp/aws-adot:
+  #   endpoint: aws-ot-collector:4317
+  #   tls:
+  #     insecure: true
+
+  # file:
+  #   path: ./filename.json
+
+  # debug:
+  #   verbosity: detailed
+
+extensions:
+  health_check:
+  # pprof:
+  # zpages:
+
+service:
+  # extensions: [health_check, pprof, zpages]
+  extensions: [health_check]
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [otlp/aspire-dashboard, otlp/jaeger, awsxray]
+    metrics:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [otlp/aspire-dashboard, awsemf, prometheus]
+    logs:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [otlp/aspire-dashboard]

@@ -1,0 +1,52 @@
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+      awsxray:
+        endpoint: 0.0.0.0:2000
+        transport: udp
+
+processors:
+  memory_limiter:
+    limit_mib: 100
+    check_interval: 5s
+  batch/traces:
+    timeout: 1s
+    send_batch_size: 50
+  batch/metrics:
+    timeout: 60s
+
+exporters:
+  # logging:
+  #   loglevel: debug
+  awsxray:
+    region: "ca-central-1"
+  awsemf:
+    log_group_name: "ADOTLogGroup"
+    log_stream_name: "ADOTLogStream"
+    namespace: "ADOTMetricNS"
+    # region: 'ca-central-1'
+
+extensions:
+  health_check:
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp, awsxray]
+      processors: [memory_limiter, batch/traces]
+      exporters: [awsxray]
+    metrics:
+      receivers: [otlp]
+      processors: [batch/metrics]
+      exporters: [awsemf]
+
+  extensions: [health_check]
+
+  # extensions: [pprof]
+  # telemetry:
+  #   logs:
+  #     level: debug
